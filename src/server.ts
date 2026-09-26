@@ -1,8 +1,22 @@
 import app from "./app";
+import { pool } from "./config/database";
+import { env } from "./config/env";
 
-const PORT = process.env.PORT || 5000;
+async function startServer() {
+  try {
+    await pool.query("SELECT current_database(), current_user");
 
-app.listen(PORT, () => {
-    console.log(`Splitly backend running on http://localhost:${PORT}`);
-});
+    console.log("PostgreSQL connected successfully");
 
+    app.listen(env.port, () => {
+      console.log(
+        `Splitly backend running on http://localhost:${env.port}`,
+      );
+    });
+  } catch (error) {
+    console.error("Failed to connect to PostgreSQL:", error);
+    process.exit(1);
+  }
+}
+
+startServer();

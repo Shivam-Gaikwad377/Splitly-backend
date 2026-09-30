@@ -3,7 +3,7 @@ import {
   errorMiddleware,
   notFoundMiddleware,
 } from "./middleware/error.middleware";
-import { AppError } from "./utils/app-error";
+import routes from "./routes";
 const app = express();
 
 app.use(express.json());
@@ -15,17 +15,10 @@ app.get("/", (_req, res) => {
   });
 });
 
-app.get("/test-error", (_req, _res) => {
-  throw new Error("Something went wrong");
-});
 
-app.get("/test-app-error", (_req, _res) => {
-  throw new AppError(
-    "This user does not exist",
-    404,
-    "USER_NOT_FOUND",
-  );
-});
+
+app.use(routes);
+
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);
 

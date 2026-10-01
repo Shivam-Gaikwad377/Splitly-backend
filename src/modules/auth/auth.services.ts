@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { findUserByIdentifier, createAuthSession, findAuthSessionByTokenHash, updateAuthSessionTokenHash } from './auth.repository';
+import { findUserByIdentifier, createAuthSession, findAuthSessionByTokenHash, rotateRefreshToken, revokeAuthSession } from './auth.repository';
 import { generateRefreshToken, hashRefreshToken } from '../../utils/auth/refreshToken';
 import { signAccessToken } from '../../utils/auth/jwt';
 import { AppError } from '../../utils/app-error';
@@ -93,7 +93,7 @@ export async function refreshTokenService(oldRefreshToken: string) {
     const newRefreshToken = generateRefreshToken();
     const hashedNewRefreshToken = hashRefreshToken(newRefreshToken);
 
-    const updateSuccess = await updateAuthSessionTokenHash(
+    const updateSuccess = await rotateRefreshToken(
         BigInt(authSession.id),
         hashedNewRefreshToken,
         hashedOldRefreshToken
@@ -116,6 +116,18 @@ export async function refreshTokenService(oldRefreshToken: string) {
         accessToken,
         refreshToken: newRefreshToken,
     };
+}
+
+export async function logoutService(sessionId: bigint, userId: bigint): Promise<boolean> {
+    const revokeSuccess = await revokeAuthSession(sessionId, userId);
+    if(!revokeSuccess) {
+        throw new AppError(
+            "Unauthorized request",
+            401,
+            "UNAUTHORIZED_REQUEST"
+        );
+    }
+    return revokeSuccess;
 }
 
 

@@ -9,7 +9,7 @@ export async function findUserByIdentifier(identifier: string) {
 
     return result.rows[0] ?? null;
 
-    
+
 }
 
 export async function createAuthSession(userId: bigint, refreshTokenHash: string) {
@@ -30,10 +30,18 @@ export async function findAuthSessionByTokenHash(tokenHash: string) {
     return result.rows[0] ?? null;
 }
 
-export async function updateAuthSessionTokenHash(sessionId: bigint, newTokenHash: string, oldTokenHash: string) {
+export async function rotateRefreshToken(sessionId: bigint, newTokenHash: string, oldTokenHash: string) {
     const result = await pool.query(
         "UPDATE auth_sessions SET token_hash = $1 WHERE id = $2 AND token_hash = $3 AND expires_at > NOW() AND revoked_at IS NULL",
         [newTokenHash, sessionId, oldTokenHash]
     );
-    return result.rowCount === 1 ? true : false;
+    return result.rowCount === 1;
+}
+
+export async function revokeAuthSession(sessionId: bigint, userId: bigint) {
+    const result = await pool.query(
+        "UPDATE auth_sessions SET revoked_at = NOW() WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL",
+        [sessionId, userId]
+    );
+    return result.rowCount === 1;
 }

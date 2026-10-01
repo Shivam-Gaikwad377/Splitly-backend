@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { findUserByIdentifier, createAuthSession } from './auth.repository';
+import { findUserByIdentifier, createAuthSession, findAuthSessionByTokenHash, updateAuthSessionTokenHash } from './auth.repository';
 import { generateRefreshToken, hashRefreshToken } from '../../utils/auth/refreshToken';
 import { signAccessToken } from '../../utils/auth/jwt';
 import { AppError } from '../../utils/app-error';
@@ -54,7 +54,7 @@ export async function login(identifier: string, password: string) {
         email: user.email,
         name: user.name,
         phone: user.phone,
-
+        
     }
     // return the access token and refresh token
     return {
@@ -65,6 +65,58 @@ export async function login(identifier: string, password: string) {
     }
 }
 
+export async function refreshTokenService(oldRefreshToken: string) {
+    const hashedOldRefreshToken = hashRefreshToken(oldRefreshToken);
+
+    const authSession = await findAuthSessionByTokenHash(
+        hashedOldRefreshToken
+    );
+
+    if (!authSession) {
+        throw new AppError(
+            "Invalid refresh token",
+            401,
+            "INVALID_REFRESH_TOKEN"
+        );
+    }
+
+  
+
+    if (new Date(authSession.expires_at).getTime() <= Date.now() || authSession.revoked_at !== null) {
+        throw new AppError(
+            "Invalid refresh token",
+            401,
+            "INVALID_REFRESH_TOKEN"
+        );
+    }
+
+    const newRefreshToken = generateRefreshToken();
+    const hashedNewRefreshToken = hashRefreshToken(newRefreshToken);
+
+    const updateSuccess = await updateAuthSessionTokenHash(
+        BigInt(authSession.id),
+        hashedNewRefreshToken,
+        hashedOldRefreshToken
+    );
+
+    if (!updateSuccess) {
+        throw new AppError(
+            "Invalid refresh token",
+            401,
+            "INVALID_REFRESH_TOKEN"
+        );
+    }
+
+    const accessToken = signAccessToken(
+        authSession.user_id,
+        authSession.id
+    );
+
+    return {
+        accessToken,
+        refreshToken: newRefreshToken,
+    };
+}
 
 
 

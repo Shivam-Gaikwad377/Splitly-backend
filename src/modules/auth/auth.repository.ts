@@ -20,3 +20,20 @@ export async function createAuthSession(userId: bigint, refreshTokenHash: string
     );
     return result.rows[0] ?? null;
 }
+
+export async function findAuthSessionByTokenHash(tokenHash: string) {
+
+    const result = await pool.query(
+        "SELECT * FROM auth_sessions WHERE token_hash = $1 LIMIT 1",
+        [tokenHash]
+    );
+    return result.rows[0] ?? null;
+}
+
+export async function updateAuthSessionTokenHash(sessionId: bigint, newTokenHash: string, oldTokenHash: string) {
+    const result = await pool.query(
+        "UPDATE auth_sessions SET token_hash = $1 WHERE id = $2 AND token_hash = $3 AND expires_at > NOW() AND revoked_at IS NULL",
+        [newTokenHash, sessionId, oldTokenHash]
+    );
+    return result.rowCount === 1 ? true : false;
+}

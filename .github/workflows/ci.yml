@@ -1,0 +1,72 @@
+name: Splitly Backend CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: splitly_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d splitly_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_NAME: splitly_test
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: ci-test-secret
+      JWT_EXPIRES_IN: 15m
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Apply database schema
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql \
+            --host=127.0.0.1 \
+            --port=5432 \
+            --username=postgres \
+            --dbname=splitly_test \
+            --set=ON_ERROR_STOP=1 \
+            --file=docs/database/schema.sql
+
+      - name: Run integration tests
+        run: npm run test:integration

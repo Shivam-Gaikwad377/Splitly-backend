@@ -54,19 +54,18 @@ export async function refreshTokenController(
     res.status(200).json(response);
 };
 
-export async function logoutController(req : Request, res: Response) {
+export async function logoutController(req: Request, res: Response) {
     const sessionId = BigInt(req.user.sessionId);
     const userId = BigInt(req.user.userId);
     const refreshToken = req.cookies?.refreshToken;
     await logoutService(sessionId, userId);
 
-    
-    
-    res.cookie("refreshToken", refreshToken, {
+
+
+    res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: env.nodeEnv === "production",
         sameSite: "strict",
-        maxAge: 30 * 24 * 60 * 60 * 1000
     });
     res.status(204).send();
 }

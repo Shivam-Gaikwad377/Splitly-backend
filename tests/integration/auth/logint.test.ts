@@ -209,4 +209,34 @@ describe("POST /auth/login", () => {
 
         expect(session.rowCount).toBe(0);
     });
+    it("should reject login when the email is not verified", async () => {
+        await pool.query(
+            `UPDATE users SET email_isverified = false WHERE email = $1`,
+            [TEST_EMAIL]
+        );
+
+        try {
+            const response = await request(app)
+                .post("/auth/login")
+                .send({
+                    identifier: TEST_EMAIL,
+                    password: TEST_PASSWORD,
+                });
+
+            expect(response.status).toBe(403);
+
+            expect(response.body).toEqual({
+                success: false,
+                error: {
+                    code: "EMAIL_NOT_VERIFIED",
+                    message: "Email not verified",
+                },
+            });
+        } finally {
+            await pool.query(
+                `UPDATE users SET email_isverified = true WHERE email = $1`,
+                [TEST_EMAIL]
+            );
+        }
+    });
 });
